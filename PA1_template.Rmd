@@ -1,0 +1,92 @@
+#R markdown for Reproducible research Week 2 Assignment
+======================================================
+
+Loading and preprocessing the data
+```{r}
+setwd("C:/Users/Teng Family/Desktop/Ziyang/Data Science/MOOC courses/JHU data science specialization/Reproducible Research/Week 2")
+
+dta<-read.csv("activity.csv")
+dta$date<- as.Date(dta$date)
+```
+
+Calculating the total number of steps and Plotting a histogram for each day
+
+```{r}
+#Total number of steps for each day
+total.steps<- tapply(dta$steps, dta$date, sum, na.rm= TRUE)
+
+library("ggplot2")
+
+#Plotting histigrom for the number of steps taken for each day
+qplot(total.steps, binwidth=1000, xlab="total number of steps taken each day")
+ 
+
+#Mean and median of total steps each day
+mean(total.steps, na.rm = TRUE)
+median(total.steps, na.rm = TRUE)
+```
+
+What is the average activity pattern
+```{r}
+average<- aggregate(x=list(steps= dta$steps), by=list(interval= dta$interval), mean, na.rm= TRUE)
+
+ggplot(average, aes(x= interval, y= steps)) + geom_line() + xlab("5 minute intervals")+ylab("Average number of steps")
+```
+
+which 5-minute interval, on average across all the days in the dataset, which contains the maximum number of steps
+
+```{r}
+average[which.max(average$x),]
+```
+
+Imputing missing values
+
+```{r}
+#Calculate and report the total number of missing values in the dataset
+sum(is.na(dta$steps))
+
+#Using mean to replace the NA values
+fill.values<- function(steps, interval){
+  filled<- NA
+  if (!is.na(steps))
+      filled<- c(steps)
+  else
+      filled<- (average[average$interval==interval,"steps"])
+  
+}
+filled.dta<- dta
+filled.dta$steps<- mapply(fill.values, filled.dta$steps, filled.dta$interval)
+```
+
+Make a histogram of the total number of steps taken each day
+```{r}
+total_steps<- tapply(filled.dta$steps, filled.dta$date,sum)
+qplot(total_steps, binwidth=1000, xlab= "total number of steps each day")
+```
+
+Mean and median of newly constructed data
+```{r}
+mean(total_steps)
+median(total_steps)
+```
+
+Are there differences in activity patterns between weekdays and weekends?
+```{r}
+weekday.or.weekend<- function(date){
+    days<-weekdays(date)
+    if (days%in% c("Monday","Tuesday","Wednesday","Thursday","Friday"))
+      return("weekday")
+    else if (days %in% c("Saturday", "Sunday"))
+      return("weekend")
+    else
+      stop("invalid date")
+}
+new.dta<- filled.dta
+new.dta$day<- sapply(new.dta$date, weekday.or.weekend) 
+
+#Making a panel plot of time series for average number of steps taken across weekdays or weekends
+average.wkday.wkend<- aggregate(steps ~ interval + day, data=new.dta, mean)
+ggplot(average.wkday.wkend, aes(interval, steps))+ geom_line()+ facet_grid(day ~ .) + xlab("5 minute interval") + ylab("Number of steps")
+```
+
+Activities seem to differ for weekdays and weekend separately
